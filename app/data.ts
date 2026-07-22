@@ -363,3 +363,34 @@ export const METHODOLOGY = [
       "원시 구매 건수·판매량·11위 이하 순위는 공개 자료로 확인되지 않으면 표시하지 않습니다.",
   },
 ];
+
+export type ArchivePeriod = {
+  key: string;
+  label: string;
+  shortLabel: string;
+  period: string;
+  issue: string;
+  kind: "monthly" | "annual";
+  checkedAt: string;
+  sourceUrl: string;
+  sourceLabel: string;
+  rankings: Array<[string, string, string]>;
+};
+
+export const ARCHIVE_PERIODS: ArchivePeriod[] = [
+  { key: "2026-06", label: "2026년 6월", shortLabel: "6월", period: "2026.06", issue: "01", kind: "monthly", checkedAt: "2026.07.16", sourceUrl: "https://taishurx.jp/detail/32733/", sourceLabel: "2026년 6월 공개 순위", rankings: ACTRESSES.map(({ nameKo, nameJp, nameEn }) => [nameKo, nameJp, nameEn]) },
+  { key: "2026-05", label: "2026년 5월", shortLabel: "5월", period: "2026.05", issue: "02", kind: "monthly", checkedAt: "2026.07.22", sourceUrl: "https://www.sina.cn/news/detail/5305006739947620.html", sourceLabel: "2026년 5월 공개 순위", rankings: [
+    ["아이자와 미유","逢沢みゆ","Miyu Aizawa"],["세토 칸나","瀬戸環奈","Kanna Seto"],["하타노 유이","波多野結衣","Yui Hatano"],["카와키타 사이카","河北彩伽","Saika Kawakita"],["사츠키 나오","彩月七緒","Nao Satsuki"],["이시카와 미오","石川澪","Mio Ishikawa"],["키타오카 카린","北岡果林","Karin Kitaoka"],["유키무라 미즈키","幸村泉希","Mizuki Yukimura"],["하카타 이로하","博多彩葉","Iroha Hakata"],["오노사카 유이카","小野坂ゆいか","Yuika Onosaka"]] },
+  { key: "2026-04", label: "2026년 4월", shortLabel: "4월", period: "2026.04", issue: "03", kind: "monthly", checkedAt: "2026.07.22", sourceUrl: "https://www.dmm.co.jp/mono/dvd/-/ranking/=/mode=actress/term=monthly/", sourceLabel: "FANZA 통판 월간 아카이브", rankings: [
+    ["세토 칸나","瀬戸環奈","Kanna Seto"],["아이자와 미유","逢沢みゆ","Miyu Aizawa"],["카와키타 사이카","河北彩伽","Saika Kawakita"],["사츠키 나오","彩月七緒","Nao Satsuki"],["이시카와 미오","石川澪","Mio Ishikawa"],["후쿠다 유아","福田ゆあ","Yua Fukuda"],["키타오카 카린","北岡果林","Karin Kitaoka"],["하타노 유이","波多野結衣","Yui Hatano"],["오노사카 유이카","小野坂ゆいか","Yuika Onosaka"],["모리사와 가나","森沢かな","Kana Morisawa"]] },
+  { key: "2026-03", label: "2026년 3월", shortLabel: "3월", period: "2026.03", issue: "04", kind: "monthly", checkedAt: "2026.07.22", sourceUrl: "https://www.sina.cn/news/detail/5282992792800942.html", sourceLabel: "2026년 3월 공개 순위", rankings: [
+    ["세토 칸나","瀬戸環奈","Kanna Seto"],["아이자와 미유","逢沢みゆ","Miyu Aizawa"],["카와키타 사이카","河北彩伽","Saika Kawakita"],["후쿠다 유아","福田ゆあ","Yua Fukuda"],["사츠키 나오","彩月七緒","Nao Satsuki"],["키타오카 카린","北岡果林","Karin Kitaoka"],["하타노 유이","波多野結衣","Yui Hatano"],["모리사와 가나","森沢かな","Kana Morisawa"],["오노사카 유이카","小野坂ゆいか","Yuika Onosaka"],["이시카와 미오","石川澪","Mio Ishikawa"]] },
+  { key: "2026-02", label: "2026년 2월", shortLabel: "2월", period: "2026.02", issue: "05", kind: "monthly", checkedAt: "2026.07.22", sourceUrl: "https://www.dmm.co.jp/mono/dvd/-/ranking/=/mode=actress/term=monthly/", sourceLabel: "FANZA 통판 월간 아카이브", rankings: [
+    ["세토 칸나","瀬戸環奈","Kanna Seto"],["아이자와 미유","逢沢みゆ","Miyu Aizawa"],["카와키타 사이카","河北彩伽","Saika Kawakita"],["이시카와 미오","石川澪","Mio Ishikawa"],["후쿠다 유아","福田ゆあ","Yua Fukuda"],["키타오카 카린","北岡果林","Karin Kitaoka"],["하타노 유이","波多野結衣","Yui Hatano"],["모리사와 가나","森沢かな","Kana Morisawa"],["시시도 리호","宍戸里帆","Riho Shishido"],["오노사카 유이카","小野坂ゆいか","Yuika Onosaka"]] },
+  { key: "2026-01", label: "2026년 1월", shortLabel: "1월", period: "2026.01", issue: "06", kind: "monthly", checkedAt: "2026.01.05", sourceUrl: "https://jci.nagoya/260105-ranking_actress/", sourceLabel: "FANZA 통판 월간 스냅샷", rankings: [
+    ["세토 칸나","瀬戸環奈","Kanna Seto"],["아이자와 미유","逢沢みゆ","Miyu Aizawa"],["카와키타 사이카","河北彩伽","Saika Kawakita"],["이시카와 미오","石川澪","Mio Ishikawa"],["키타오카 카린","北岡果林","Karin Kitaoka"],["후쿠다 유아","福田ゆあ","Yua Fukuda"],["이노우에 모모","井上もも","Momo Inoue"],["시시도 리호","宍戸里帆","Riho Shishido"],["하타노 유이","波多野結衣","Yui Hatano"],["모리사와 가나","森沢かな","Kana Morisawa"]] },
+  { key: "2025-year", label: "2025년 연간 종합", shortLabel: "25년 종합", period: "2025.YEAR", issue: "07", kind: "annual", checkedAt: "2026.07.22", sourceUrl: "https://fanza-guide.jp/features/fanza2025-ranking", sourceLabel: "2025년 연간 베스트", rankings: [
+    ["아이자와 미유","逢沢みゆ","Miyu Aizawa"],["유즈리하 카렌","楪カレン","Karen Yuzuriha"],["세토 칸나","瀬戸環奈","Kanna Seto"],["카와키타 사이카","河北彩伽","Saika Kawakita"],["키타오카 카린","北岡果林","Karin Kitaoka"],["모리사와 가나","森沢かな","Kana Morisawa"],["이츠카이치 메이","五日市芽依","Mei Itsukaichi"],["시라미네 미우","白峰ミウ","Miu Shiramine"],["아사노 코코로","浅野こころ","Kokoro Asano"],["이시카와 미오","石川澪","Mio Ishikawa"]] },
+  { key: "2025-12", label: "2025년 12월", shortLabel: "25년 12월", period: "2025.12", issue: "08", kind: "monthly", checkedAt: "2025.12.13", sourceUrl: "https://jci.nagoya/251213-ranking_actress/", sourceLabel: "FANZA 통판 월간 스냅샷", rankings: [
+    ["카와키타 사이카","河北彩伽","Saika Kawakita"],["세토 칸나","瀬戸環奈","Kanna Seto"],["아이자와 미유","逢沢みゆ","Miyu Aizawa"],["아라타 아리나","新ありな","Arina Arata"],["타노 유","田野憂","Yū Tano"],["후쿠다 유아","福田ゆあ","Yua Fukuda"],["이시카와 미오","石川澪","Mio Ishikawa"],["와시오 메이","鷲尾めい","Mei Washio"],["키노시타 리리코","木下凛々子","Ririko Kinoshita"],["사사키 아키","佐々木あき","Aki Sasaki"]] },
+];
