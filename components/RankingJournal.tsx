@@ -1,514 +1,68 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  ACTRESSES,
-  CATEGORY_LABELS,
-  ISSUE,
-  METHODOLOGY,
-  PRIMARY_SOURCE,
-  type Actress,
-  type RankingCategory,
-  type Trend,
-} from "../app/data";
+import { ACTRESSES, ARCHIVE_PERIODS, METHODOLOGY, PRIMARY_SOURCE, type Actress, type ArchivePeriod, type Trend } from "../app/data";
 
-const categoryOrder: RankingCategory[] = [
-  "overall",
-  "rising",
-  "newcomer",
-  "steady",
-];
-
-const trendCopy: Record<
-  Trend,
-  { symbol: string; label: string; short: string }
-> = {
-  up: { symbol: "▲", label: "상승", short: "UP" },
-  down: { symbol: "▼", label: "하락", short: "DOWN" },
-  same: { symbol: "—", label: "유지", short: "STAY" },
-  new: { symbol: "●", label: "신규", short: "NEW" },
+const trendCopy: Record<Trend, { symbol: string; label: string }> = {
+  up: { symbol: "▲", label: "상승" }, down: { symbol: "▼", label: "하락" },
+  same: { symbol: "—", label: "유지" }, new: { symbol: "●", label: "신규" },
 };
 
-function ActressImage({
-  actress,
-  eager = false,
-}: {
-  actress: Actress;
-  eager?: boolean;
-}) {
-  return (
-    <div className="portrait-frame">
-      <div className="portrait-fallback" aria-hidden="true">
-        {actress.nameEn
-          .split(" ")
-          .map((part) => part[0])
-          .join("")}
-      </div>
-      {/* Remote Commons images are intentionally left unproxied so their source remains explicit. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={actress.image}
-        alt={`${actress.nameKo} 프로필 사진`}
-        loading={eager ? "eager" : "lazy"}
-        referrerPolicy="no-referrer"
-        style={{ objectPosition: actress.imagePosition }}
-        onError={(event) => {
-          event.currentTarget.hidden = true;
-        }}
-      />
-      <span className="portrait-index" aria-hidden="true">
-        N.{String(actress.rank).padStart(2, "0")}
-      </span>
-    </div>
-  );
+function buildActresses(period: ArchivePeriod): Actress[] {
+  const index = ARCHIVE_PERIODS.findIndex((item) => item.key === period.key);
+  const previous = period.kind === "annual" ? [] : (ARCHIVE_PERIODS[index + 1]?.rankings ?? []);
+  return period.rankings.map(([nameKo, nameJp, nameEn], rankIndex) => {
+    const base = ACTRESSES.find((item) => item.nameJp === nameJp);
+    const previousIndex = previous.findIndex((item) => item[1] === nameJp);
+    const rank = rankIndex + 1;
+    const previousRank = previousIndex >= 0 ? previousIndex + 1 : undefined;
+    const trend: Trend = previousRank === undefined ? "new" : previousRank > rank ? "up" : previousRank < rank ? "down" : "same";
+    const movement = previousRank === undefined ? undefined : Math.abs(previousRank - rank);
+    const scope = period.kind === "annual" ? "연간 종합" : "통판 월간";
+    return {
+      ...(base ?? {}), slug: `${period.key}-${nameEn.toLowerCase().replaceAll(" ", "-")}`, rank,
+      nameKo, nameJp, nameEn, status: base?.status ?? "활동 정보 기록 중", trend, previousRank, movement,
+      categories: ["overall", ...(trend === "up" ? ["rising" as const] : []), ...(trend === "new" ? ["newcomer" as const] : []), ...(previousRank ? ["steady" as const] : [])],
+      headline: `${period.label} ${scope} ${rank}위`,
+      summary: `${period.label} 공개 순위에서 ${rank}위로 기록됐습니다.`,
+      introduction: [`${nameKo}는 ${period.label} ${scope} 순위에서 ${rank}위로 확인된 배우입니다.`, "AVNOTE는 작품·품번 없이 공개된 순위와 배우 이름만 기록합니다."],
+      keywords: [period.label, `${scope} ${rank}위`, previousRank ? `직전 기록 ${previousRank}위` : "아카이브 진입"],
+      image: base?.image ?? "", imagePosition: base?.imagePosition ?? "50% 18%", photoCredit: base?.photoCredit ?? "사진 자료 없음", photoLicense: base?.photoLicense ?? "", photoSource: base?.photoSource ?? "",
+    } as Actress;
+  });
 }
 
-function TrendMark({
-  trend,
-  movement,
-}: {
-  trend: Trend;
-  movement?: number;
-}) {
-  const item = trendCopy[trend];
-  const movementLabel =
-    trend === "up" && movement
-      ? ` +${movement}`
-      : trend === "down" && movement
-        ? ` -${movement}`
-        : "";
-  return (
-    <span className={`trend-mark trend-${trend}`}>
-      <span aria-hidden="true">{item.symbol}</span>
-      <span>
-        {item.label}
-        {movementLabel}
-      </span>
-    </span>
-  );
+function ActressImage({ actress, eager = false }: { actress: Actress; eager?: boolean }) {
+  const initials = actress.nameEn.split(" ").map((part) => part[0]).join("");
+  return <div className="portrait-frame"><div className="portrait-fallback" aria-hidden="true">{initials}</div>{actress.image && <img src={actress.image} alt={`${actress.nameKo} 프로필 사진`} loading={eager ? "eager" : "lazy"} referrerPolicy="no-referrer" style={{ objectPosition: actress.imagePosition }} onError={(e) => { e.currentTarget.hidden = true; }} />}<span className="portrait-index">N.{String(actress.rank).padStart(2,"0")}</span></div>;
 }
 
-function ProfileNote({ actress }: { actress: Actress }) {
-  return (
-    <article className="profile-note" id="profile-note" aria-live="polite">
-      <div className="profile-note__clip" aria-hidden="true" />
-      <header className="profile-note__header">
-        <span>PROFILE NOTE</span>
-        <span>{ISSUE.period}</span>
-      </header>
+function TrendMark({ actress }: { actress: Actress }) {
+  const item = trendCopy[actress.trend];
+  return <span className={`trend-mark trend-${actress.trend}`}><span>{item.symbol}</span><span>{item.label}{actress.movement ? ` ${actress.trend === "up" ? "+" : actress.trend === "down" ? "-" : ""}${actress.movement}` : ""}</span></span>;
+}
 
-      <ActressImage actress={actress} />
-
-      <div className="profile-note__rank">
-        <strong>#{String(actress.rank).padStart(2, "0")}</strong>
-        <TrendMark trend={actress.trend} movement={actress.movement} />
-      </div>
-
-      <div className="profile-note__names">
-        <p>{actress.nameJp}</p>
-        <h2>{actress.nameKo}</h2>
-        <span>{actress.nameEn}</span>
-      </div>
-
-      <p className="profile-note__headline">{actress.headline}</p>
-
-      <dl className="profile-facts">
-        <div>
-          <dt>현재 기록</dt>
-          <dd>통판 월간 {actress.rank}위</dd>
-        </div>
-        <div>
-          <dt>활동 시작</dt>
-          <dd>{actress.debut ? `${actress.debut}년` : "정보 확인 중"}</dd>
-        </div>
-        <div>
-          <dt>활동 상태</dt>
-          <dd>{actress.status}</dd>
-        </div>
-      </dl>
-
-      <div className="profile-note__copy">
-        {actress.introduction.map((paragraph) => (
-          <p key={paragraph}>{paragraph}</p>
-        ))}
-      </div>
-
-      <ul className="keyword-list" aria-label="배우 기록 키워드">
-        {actress.keywords.map((keyword) => (
-          <li key={keyword}>#{keyword.replaceAll(" ", "_")}</li>
-        ))}
-      </ul>
-
-      <div className="photo-credit">
-        <span>PHOTO</span>
-        <p>
-          {actress.photoCredit} · {actress.photoLicense}
-        </p>
-        <a href={actress.photoSource} target="_blank" rel="noreferrer">
-          원본 및 라이선스 확인 ↗
-        </a>
-      </div>
-    </article>
-  );
+function ProfileNote({ actress, period }: { actress: Actress; period: ArchivePeriod }) {
+  return <article className="profile-note" id="profile-note" aria-live="polite"><div className="profile-note__clip"/><header className="profile-note__header"><span>PROFILE NOTE</span><span>{period.period}</span></header><ActressImage actress={actress}/><div className="profile-note__rank"><strong>#{String(actress.rank).padStart(2,"0")}</strong><TrendMark actress={actress}/></div><div className="profile-note__names"><p>{actress.nameJp}</p><h2>{actress.nameKo}</h2><span>{actress.nameEn}</span></div><p className="profile-note__headline">{actress.headline}</p><dl className="profile-facts"><div><dt>현재 기록</dt><dd>{period.kind === "annual" ? "연간 종합" : "통판 월간"} {actress.rank}위</dd></div><div><dt>직전 기록</dt><dd>{actress.previousRank ? `${actress.previousRank}위` : "비교 기록 없음"}</dd></div><div><dt>활동 상태</dt><dd>{actress.status}</dd></div></dl><div className="profile-note__copy">{actress.introduction.map(p => <p key={p}>{p}</p>)}</div><ul className="keyword-list">{actress.keywords.map(k => <li key={k}>#{k.replaceAll(" ","_")}</li>)}</ul>{actress.photoSource && <div className="photo-credit"><span>PHOTO</span><p>{actress.photoCredit} · {actress.photoLicense}</p><a href={actress.photoSource} target="_blank" rel="noreferrer">원본 및 라이선스 확인 ↗</a></div>}</article>;
 }
 
 export default function RankingJournal() {
-  const [category, setCategory] = useState<RankingCategory>("overall");
+  const [periodKey, setPeriodKey] = useState("2026-06");
   const [query, setQuery] = useState("");
-  const [selectedSlug, setSelectedSlug] = useState(ACTRESSES[0].slug);
-
-  const filtered = useMemo(() => {
-    const normalized = query.trim().toLocaleLowerCase();
-    return ACTRESSES.filter((actress) => {
-      const categoryMatch =
-        category === "overall" || actress.categories.includes(category);
-      const nameMatch =
-        normalized.length === 0 ||
-        [actress.nameKo, actress.nameJp, actress.nameEn]
-          .join(" ")
-          .toLocaleLowerCase()
-          .includes(normalized);
-      return categoryMatch && nameMatch;
-    }).sort((a, b) => {
-      if (category === "rising") {
-        return (b.movement ?? 0) - (a.movement ?? 0) || a.rank - b.rank;
-      }
-      return a.rank - b.rank;
-    });
-  }, [category, query]);
-
-  const activeSelected =
-    filtered.find((actress) => actress.slug === selectedSlug) ??
-    filtered[0] ??
-    null;
-
-  const chooseCategory = (next: RankingCategory) => {
-    setCategory(next);
-    const selectedActress = ACTRESSES.find(
-      (actress) => actress.slug === selectedSlug,
-    );
-    const selectedMatches =
-      next === "overall" || selectedActress?.categories.includes(next);
-
-    if (!selectedMatches) {
-      const firstMatch = ACTRESSES.find((actress) =>
-        actress.categories.includes(next),
-      );
-      if (firstMatch) setSelectedSlug(firstMatch.slug);
-    }
-
-    window.setTimeout(() => {
-      document.getElementById("ranking")?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }, 0);
-  };
-
-  const chooseActress = (slug: string) => {
-    setSelectedSlug(slug);
-    if (window.matchMedia("(max-width: 899px)").matches) {
-      window.setTimeout(() => {
-        document.getElementById("profile-note")?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      }, 0);
-    }
-  };
-
-  return (
-    <main>
-      <header className="site-header">
-        <a className="brand" href="#top" aria-label="AVNOTE 홈">
-          <span className="brand-mark">A/N</span>
-          <span>
-            <strong>AVNOTE</strong>
-            <small>ACTRESS RANKING JOURNAL</small>
-          </span>
-        </a>
-
-        <nav className="desktop-nav" aria-label="주요 메뉴">
-          <button type="button" onClick={() => chooseCategory("overall")}>
-            월간 판매
-          </button>
-          <button type="button" onClick={() => chooseCategory("rising")}>
-            급상승
-          </button>
-          <button type="button" onClick={() => chooseCategory("newcomer")}>
-            신규 진입
-          </button>
-          <a href="#methodology">산정 기준</a>
-        </nav>
-
-        <span className="header-issue">ISSUE {ISSUE.number}</span>
-      </header>
-
-      <section className="cover" id="top">
-        <div className="cover-copy">
-          <div className="issue-line">
-            <span>ISSUE {ISSUE.number}</span>
-            <span>{ISSUE.checkedAt} UPDATED</span>
-          </div>
-          <p className="cover-kicker">ACTRESS RANKING JOURNAL</p>
-          <h1>
-            이번 달,
-            <br />
-            통판에서 가장
-            <br />
-            <em>선택된 배우</em>
-          </h1>
-          <p className="cover-description">
-            2026년 6월 FANZA 통판 구매수 기준 배우 순위를 기록했습니다.
-            작품과 품번 없이 오직 배우와 전월 대비 흐름만 읽어보세요.
-          </p>
-          <div className="cover-actions">
-            <a className="primary-link" href="#ranking">
-              랭킹 읽기 <span aria-hidden="true">↓</span>
-            </a>
-            <a className="text-link" href="#methodology">
-              이번 호 산정 기준
-            </a>
-          </div>
-          <div className="cover-footnote">
-            <span>NOTE 001</span>
-            <p>{ISSUE.description}</p>
-          </div>
-        </div>
-
-        <article className="cover-feature">
-          <div className="cover-feature__label">
-            <span>NO. 01</span>
-            <TrendMark
-              trend={ACTRESSES[0].trend}
-              movement={ACTRESSES[0].movement}
-            />
-          </div>
-          <ActressImage actress={ACTRESSES[0]} eager />
-          <div className="cover-feature__caption">
-            <div>
-              <p>{ACTRESSES[0].nameJp}</p>
-              <h2>{ACTRESSES[0].nameKo}</h2>
-              <span>{ACTRESSES[0].nameEn}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                chooseActress(ACTRESSES[0].slug);
-                document
-                  .getElementById("ranking")
-                  ?.scrollIntoView({ behavior: "smooth" });
-              }}
-            >
-              프로필 읽기 <span aria-hidden="true">↗</span>
-            </button>
-          </div>
-        </article>
-      </section>
-
-      <section className="ranking-section" id="ranking">
-        <header className="section-heading">
-          <div>
-            <p>RANKING LEDGER · {ISSUE.period}</p>
-            <h2>배우 랭킹 노트</h2>
-          </div>
-          <p>
-            총 {filtered.length}명 · 마지막 확인 {ISSUE.checkedAt}
-          </p>
-        </header>
-
-        <div className="ranking-controls">
-          <div className="category-tabs" aria-label="랭킹 분류">
-            {categoryOrder.map((item) => (
-              <button
-                type="button"
-                aria-pressed={category === item}
-                className={category === item ? "is-active" : ""}
-                onClick={() => chooseCategory(item)}
-                key={item}
-              >
-                {CATEGORY_LABELS[item].label}
-              </button>
-            ))}
-          </div>
-          <label className="ranking-search">
-            <span>배우 찾기</span>
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="한글 · 일본어 · 영문 이름"
-              type="search"
-            />
-            <span aria-hidden="true">⌕</span>
-          </label>
-        </div>
-
-        <p className="category-note">{CATEGORY_LABELS[category].note}</p>
-
-        <div className="ranking-layout">
-          <div className="ranking-ledger">
-            <div className="ledger-labels" aria-hidden="true">
-              <span>RANK</span>
-              <span>ACTRESS / NOTE</span>
-              <span>STATUS</span>
-            </div>
-
-            {filtered.length > 0 ? (
-              <ol>
-                {filtered.map((actress, index) => (
-                  <li
-                    className={[
-                      "ranking-row",
-                      activeSelected?.slug === actress.slug ? "is-selected" : "",
-                      index < 3 ? "is-featured" : "",
-                    ].join(" ")}
-                    key={actress.slug}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => chooseActress(actress.slug)}
-                      aria-label={`${actress.nameKo} 프로필 읽기`}
-                    >
-                      <span className="row-rank">
-                        {String(actress.rank).padStart(2, "0")}
-                      </span>
-
-                      {index < 3 && (
-                        <div className="row-photo">
-                          <ActressImage actress={actress} />
-                        </div>
-                      )}
-
-                      <span className="row-main">
-                        <span className="row-name">
-                          <strong>{actress.nameKo}</strong>
-                          <span>{actress.nameJp}</span>
-                          <small>{actress.nameEn}</small>
-                        </span>
-                        <span className="row-summary">{actress.summary}</span>
-                      </span>
-
-                      <span className="row-status">
-                        <TrendMark
-                          trend={actress.trend}
-                          movement={actress.movement}
-                        />
-                        <small>
-                          {actress.debut ? `${actress.debut}–` : "활동 연도 확인 중"}
-                        </small>
-                        <span className="row-arrow" aria-hidden="true">
-                          ↗
-                        </span>
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ol>
-            ) : (
-              <div className="empty-result">
-                <strong>찾는 배우가 없습니다.</strong>
-                <p>검색어를 지우거나 다른 랭킹 분류를 선택해 보세요.</p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setQuery("");
-                    setCategory("overall");
-                  }}
-                >
-                  검색 초기화
-                </button>
-              </div>
-            )}
-          </div>
-
-          {activeSelected && (
-            <aside className="profile-column" aria-label="선택한 배우 소개">
-              <ProfileNote actress={activeSelected} />
-            </aside>
-          )}
-        </div>
-      </section>
-
-      <section className="methodology-section" id="methodology">
-        <header className="methodology-heading">
-          <p>EDITORIAL STANDARD</p>
-          <h2>
-            순위보다 먼저,
-            <br />
-            기준을 공개합니다.
-          </h2>
-          <span>
-            AVNOTE는 자동 수집 실시간 차트가 아닙니다. FANZA 통판 월간
-            배우 랭킹을 확인하고, 같은 지표의 전월 순위와 비교해 남기는
-            기록입니다.
-          </span>
-        </header>
-
-        <ol className="methodology-list">
-          {METHODOLOGY.map((item) => (
-            <li key={item.index}>
-              <span>{item.index}</span>
-              <div>
-                <h3>{item.title}</h3>
-                <p>{item.description}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-
-        <div className="source-note">
-          <div>
-            <span>SOURCE NOTE</span>
-            <strong>{ISSUE.title}</strong>
-          </div>
-          <p>
-            기준 지표는 FANZA 통판 구매수입니다. 2026년 6월 공식 순서를
-            그대로 표시하고, 5월 월간 순위와 비교해 상승·하락·신규 진입을
-            계산했습니다. 원시 구매 건수는 공개되지 않았습니다.
-          </p>
-          <p>
-            <a href={PRIMARY_SOURCE.officialUrl} target="_blank" rel="noreferrer">
-              FANZA 공식 월간 랭킹 ↗
-            </a>
-            <br />
-            <a href={PRIMARY_SOURCE.referenceUrl} target="_blank" rel="noreferrer">
-              공개 순위 확인 자료 ↗
-            </a>
-            <br />
-            프로필 사진은 Wikimedia Commons 공개 라이선스 자료입니다.
-          </p>
-        </div>
-      </section>
-
-      <footer className="site-footer">
-        <div className="footer-brand">
-          <span className="brand-mark">A/N</span>
-          <div>
-            <strong>AVNOTE</strong>
-            <p>배우의 인기 흐름을 기록하는 월간 랭킹 저널</p>
-          </div>
-        </div>
-        <div className="footer-meta">
-          <p>성인 대상 배우 정보를 다루는 19세 이상 열람 페이지입니다.</p>
-          <p>작품·품번·다운로드 정보는 제공하지 않습니다.</p>
-          <span>© 2026 AVNOTE · ISSUE {ISSUE.number}</span>
-        </div>
-      </footer>
-
-      <nav className="mobile-nav" aria-label="모바일 빠른 메뉴">
-        <button type="button" onClick={() => chooseCategory("overall")}>
-          <span aria-hidden="true">01</span>
-          랭킹
-        </button>
-        <button type="button" onClick={() => chooseCategory("rising")}>
-          <span aria-hidden="true">↗</span>
-          급상승
-        </button>
-        <button type="button" onClick={() => chooseCategory("newcomer")}>
-          <span aria-hidden="true">●</span>
-          신규
-        </button>
-      </nav>
-    </main>
-  );
+  const [selected, setSelected] = useState("");
+  const period = ARCHIVE_PERIODS.find(p => p.key === periodKey)!;
+  const actresses = useMemo(() => buildActresses(period), [period]);
+  const filtered = actresses.filter(a => [a.nameKo,a.nameJp,a.nameEn].join(" ").toLowerCase().includes(query.trim().toLowerCase()));
+  const active = actresses.find(a => a.slug === selected) ?? filtered[0] ?? actresses[0];
+  const top = actresses[0];
+  const choosePeriod = (key: string) => { setPeriodKey(key); setSelected(""); setQuery(""); };
+  return <main>
+    <header className="site-header"><a className="brand" href="#top"><span className="brand-mark">A/N</span><span><strong>AVNOTE</strong><small>ACTRESS RANKING JOURNAL</small></span></a><nav className="desktop-nav"><a href="#archive">기간별 랭킹</a><a href="#ranking">배우 찾기</a><a href="#methodology">산정 기준</a></nav><span className="header-issue">ISSUE {period.issue}</span></header>
+    <section className="cover" id="top"><div className="cover-copy"><div className="issue-line"><span>ISSUE {period.issue}</span><span>{period.checkedAt} CHECKED</span></div><p className="cover-kicker">ACTRESS RANKING ARCHIVE</p><h1>{period.kind === "annual" ? "한 해," : "이번 달,"}<br/>통판에서 가장<br/><em>선택된 배우</em></h1><p className="cover-description">{period.label} 배우 순위를 기록했습니다. 작품과 품번 없이 배우와 기간별 흐름만 살펴보세요.</p><div className="cover-actions"><a className="primary-link" href="#archive">기간 고르기 ↓</a><a className="text-link" href="#methodology">기록 기준</a></div><div className="cover-footnote"><span>ARCHIVE {period.issue}</span><p>{period.label} · 상위 10명 · 공개 순서 보존</p></div></div><article className="cover-feature"><div className="cover-feature__label"><span>NO. 01</span><TrendMark actress={top}/></div><ActressImage actress={top} eager/><div className="cover-feature__caption"><div><p>{top.nameJp}</p><h2>{top.nameKo}</h2><span>{top.nameEn}</span></div><button onClick={() => document.getElementById("ranking")?.scrollIntoView({behavior:"smooth"})}>프로필 읽기 ↗</button></div></article></section>
+    <section className="archive-strip" id="archive"><div className="archive-strip__title"><span>ARCHIVE INDEX</span><strong>기간별 랭킹 노트</strong></div><div className="archive-tabs">{ARCHIVE_PERIODS.map(p => <button key={p.key} className={p.key === periodKey ? "is-active" : ""} aria-pressed={p.key === periodKey} onClick={() => choosePeriod(p.key)}><small>{p.kind === "annual" ? "YEAR" : p.period.slice(0,4)}</small><span>{p.shortLabel}</span></button>)}</div></section>
+    <section className="ranking-section" id="ranking"><header className="section-heading"><div><p>RANKING LEDGER · {period.period}</p><h2>{period.label} 배우 랭킹</h2></div><p>총 {filtered.length}명 · 확인 {period.checkedAt}</p></header><div className="ranking-controls"><p className="category-note">{period.sourceLabel}의 상위 10위 기록</p><label className="ranking-search"><span>배우 찾기</span><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="한글 · 일본어 · 영문 이름" type="search"/><span>⌕</span></label></div><div className="ranking-layout"><div className="ranking-ledger"><div className="ledger-labels"><span>RANK</span><span>ACTRESS / NOTE</span><span>STATUS</span></div><ol>{filtered.map((a,index)=><li className={`ranking-row ${active?.slug===a.slug?"is-selected":""} ${index<3?"is-featured":""}`} key={a.slug}><button onClick={()=>setSelected(a.slug)}><span className="row-rank">{String(a.rank).padStart(2,"0")}</span>{index<3&&<div className="row-photo"><ActressImage actress={a}/></div>}<span className="row-main"><span className="row-name"><strong>{a.nameKo}</strong><span>{a.nameJp}</span><small>{a.nameEn}</small></span><span className="row-summary">{a.summary}</span></span><span className="row-status"><TrendMark actress={a}/><span className="row-arrow">↗</span></span></button></li>)}</ol>{filtered.length===0&&<div className="empty-result"><strong>찾는 배우가 없습니다.</strong><button onClick={()=>setQuery("")}>검색 초기화</button></div>}</div>{active&&<aside className="profile-column"><ProfileNote actress={active} period={period}/></aside>}</div></section>
+    <section className="methodology-section" id="methodology"><header className="methodology-heading"><p>EDITORIAL STANDARD</p><h2>순위보다 먼저,<br/>기준을 공개합니다.</h2><span>월별 기록은 통판 월간 순서를, 연간 기록은 별도 연간 베스트 자료를 사용합니다. 서로 다른 기간의 순위를 하나의 임의 점수로 합치지 않습니다.</span></header><ol className="methodology-list">{METHODOLOGY.map(i=><li key={i.index}><span>{i.index}</span><div><h3>{i.title}</h3><p>{i.description}</p></div></li>)}</ol><div className="source-note"><div><span>SOURCE NOTE</span><strong>{period.label} 랭킹</strong></div><p>{period.sourceLabel}에 표시된 순서를 아카이브했습니다. 원시 판매 건수는 공개되지 않아 표시하지 않습니다.</p><p><a href={period.sourceUrl} target="_blank" rel="noreferrer">선택 기간 공개 자료 ↗</a><br/><a href={PRIMARY_SOURCE.officialUrl} target="_blank" rel="noreferrer">FANZA 공식 월간 랭킹 ↗</a></p></div></section>
+    <footer className="site-footer"><div className="footer-brand"><span className="brand-mark">A/N</span><div><strong>AVNOTE</strong><p>배우의 인기 흐름을 기록하는 랭킹 저널</p></div></div><div className="footer-meta"><p>성인 대상 배우 정보를 다루는 19세 이상 열람 페이지입니다.</p><p>작품·품번·다운로드 정보는 제공하지 않습니다.</p><span>© 2026 AVNOTE · ARCHIVE 01–08</span></div></footer>
+    <nav className="mobile-nav"><a href="#archive"><span>▤</span>기간</a><a href="#ranking"><span>01</span>랭킹</a><a href="#methodology"><span>i</span>기준</a></nav>
+  </main>;
 }
